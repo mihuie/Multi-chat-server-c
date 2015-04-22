@@ -127,24 +127,25 @@ exsiting_user:
                         FD_CLR(i, &active_fd_set);
 
                     } else {
-chat:                   // checking if  
-                        if(strcmp("\\c\n", buf) == 0){
-                            write(i, "\nWho do you want to chat with? : ", BUF_SIZE);
-                            recv(i, buf, sizeof(buf), 0);
 
-                            // searching if username listed
-                            user_present = 0;
-                            for (n = 0; n<= no_clients; n++){
-                                if (strcmp(users[n], buf) == 0)
-                                    user_present = 1;
+request_chat:           // checking if  
+                        if(strncmp("@", buf, 1) == 0){
+                            
+                            memset(str, 0, BUF_SIZE);
+                            for (n = 1; n <= recv_msg_size; n++)
+                                str[n-1] = buf[n];
+                            
+                            for (n = 0; n<= no_clients; n++){                                
+                                if (strcmp(users[n], str) == 0){
+                                    strcat(str, " would like to chat with you \n(Yes - \\y or No - \\n):");
+                                    break;
+                                }
                             }
+                            write(n, str, BUF_SIZE);
+                            recv(n, buf, sizeof(buf), 0);
+                            write(i, buf, BUF_SIZE);                                                   
 
-                            if(user_present == 0)
-                                write(i, "invalid username! \n", BUF_SIZE);
-                            else{
-                                printf("Yes\n");
-                            }
-                        } 
+                        }
                         // list
                         else if(strcmp("\\l\n", buf) == 0){
 userlist: 
@@ -204,8 +205,8 @@ wrk_group:
                                         write(wrk[n], str, BUF_SIZE);
                                 }
                             }
-                        }
-
+                        } 
+                        //                       
                         else{
 send_to_groups:
                             // reseting variables

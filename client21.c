@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
     fd_set read_fds;
 
     char peer_ip[10], peer_id[10];
-    char buf[BUF_SIZE];
+    char buf[BUF_SIZE], str[20];
     int byte_recvd;
 
     // create socket for sending data 
@@ -67,6 +67,17 @@ int main(int argc, char *argv[])
                         printf("\nbye!");
                         // write(sock, buf, BUF_SIZE);
                         close(sock);
+                    } else if (strcmp(buf, "\\c\n") == 0){  
+                        memset(buf, '\0', BUF_SIZE);
+                        memset(str, '\0', BUF_SIZE);  
+                        
+                        printf("Who do you want to chat with? :");
+                        scanf("%s", buf);
+                        
+                        strcat(str, "@");
+                        strcat(str, buf);
+
+                        send(sock, str, BUF_SIZE, 0); 
                     }
                     else                        
                         write(sock, buf, BUF_SIZE);
@@ -84,16 +95,15 @@ int main(int argc, char *argv[])
                         
                         close(i); // bye!
                         FD_CLR(i, &read_fds);
-                    }
-
-                    if (strcmp(buf, "r@") == 0){    
+                    } else if (strcmp(buf, "r@") == 0){    
                         printf("server>  Enter a username? :");
                         memset(buf, BUF_SIZE, 0);
                         scanf("%s", buf);
                         send(sock, buf, BUF_SIZE, 0);
-                    }else {
+                    } else if (strncmp("@", buf, 1) == 0){
+                        printf("%s\n", buf);
+                    } else {
                         printf("%s\n" , buf);
-                        // printf(">>> ");
                         fflush(stdout);
                     }
                 }  
