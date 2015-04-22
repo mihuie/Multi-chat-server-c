@@ -143,7 +143,7 @@ request_chat:           // checking if
                             }
                             write(n, str, BUF_SIZE);
                             recv(n, buf, sizeof(buf), 0);
-                            write(i, buf, BUF_SIZE);                                                   
+                            write(n, buf, BUF_SIZE);                                                   
 
                         }
                         // list
