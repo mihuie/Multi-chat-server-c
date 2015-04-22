@@ -11,10 +11,13 @@
 #define MAX_USERS 100
 #define USER_INFO 1024
 
+
+
+
 int main(int argc, char *argv[]){
     int sock_recv;
     struct sockaddr_in	my_addr;
-    int	i, n, no_clients, newfd;
+    int	i, n, m, no_clients, newfd;
     fd_set readfds, active_fd_set;//,read_fd_set;
     int	incoming_len;
     struct sockaddr_in remote_addr;
@@ -25,11 +28,13 @@ int main(int argc, char *argv[]){
 
     int fun[20] = {0}; // holds list of persons in fun group
     int fun_count = 0; // counts number of persons in fun group
-    int loop, user_present;
+    int wrk[20] = {0}; // holds list of persons in work group
+    int wrk_count = 0; // counts number of persons in work group
+    int loop, user_present, in_fun_gp, in_wrk_gp;
     char str[BUF_SIZE], temp[10];
     char users[MAX_USERS][USER_INFO] = {{""}};
     char who_str[] = "r@";
-    char menu[] = "\n\tMENU\n\\c - Chat with user\n\\l - List online users\n\\f - Fun Group\n\\w - Work Group\n\\q - Quit";
+    char menu[] = "\n\tMENU\n\\c - Chat with user\n\\l - List online users\n\\f - Fun Group\n\\w - Work Group\n\\x - Exit Group\n\\q - Quit\n";
     
 
 
@@ -74,9 +79,9 @@ int main(int argc, char *argv[]){
         }	
 
         for (i = 0; i<= no_clients; i++){
-
             if (FD_ISSET(i, &readfds)){
-new_user:       if (i == sock_recv){
+new_user:
+                if (i == sock_recv){
                     incoming_len = sizeof(remote_addr);   /* who sent to us? */
                     if (!((newfd = accept(sock_recv, (struct sockaddr *)&remote_addr, &incoming_len)) == -1)){
                         FD_SET(newfd, &active_fd_set);
@@ -141,12 +146,11 @@ chat:                   // checking if
                             }
                         } 
                         // list
-                        if(strcmp("\\l\n", buf) == 0){
+                        else if(strcmp("\\l\n", buf) == 0){
 userlist: 
                             // creating a list of peers to return to
                             memset(str, 0, BUF_SIZE);
-                            strcat(str, "\nAvailable users:\n");
-
+                            strcat(str, "\n\tAvailable users:\n");
                             // creating list of available users
                             for (n = 0; n<= no_clients; n++){
                                 if (FD_ISSET(n, &active_fd_set)) {
@@ -158,33 +162,107 @@ userlist:
                                 }
                             }
                             strcat(str, users[i]);
-                            strcat(str, " ***me");
+                            strcat(str, " ***me\n");
                             write(i, str, BUF_SIZE);
                         } 
-                        if(strcmp("\\f\n", buf) == 0){
+                        // join fun group
+                        else if(strcmp("\\f\n", buf) == 0){
 fun_group: 
                             memset(str, 0, BUF_SIZE);
-                            write(i, "\nWelcome to the Fun Group\n", BUF_SIZE);
+                            write(i, "\n================================\nWelcome to the Fun Group\n================================\n", BUF_SIZE);
 
                             fun[fun_count] = i;
                             fun_count = fun_count + 1;
+
                             strcat(str, users[i]);
                             strcat(str, " has joined group");
-                            // write(i, str, BUF_SIZE);
-
-                            for (n = 0; n<= no_clients; n++){
-                                // if (FD_ISSET(n, &active_fd_set)) {
+                            // announce user has joined group
+                            for (n = 0; n<= fun_count; n++){
+                                if (FD_ISSET(fun[n], &active_fd_set)) {
                                     // except the listener and ourselves
-                                    if (n != sock_recv && n != i )
+                                    if (fun[n] != sock_recv && fun[n] != i )
                                         write(fun[n], str, BUF_SIZE);
-                                // }
+                                }
+                            }
+                        }
+                        // join work group
+                        else if(strcmp("\\w\n", buf) == 0){
+wrk_group: 
+                            memset(str, 0, BUF_SIZE);
+                            write(i, "\n================================\nWelcome to the Work Group\n================================\n", BUF_SIZE);
+
+                            wrk[wrk_count] = i;
+                            wrk_count = wrk_count + 1;
+
+                            strcat(str, users[i]);
+                            strcat(str, " has joined group");
+                            // announce user has joined group
+                            for (n = 0; n<= wrk_count; n++){
+                                if (FD_ISSET(wrk[n], &active_fd_set)) {
+                                    // except the listener and ourselves
+                                    if (wrk[n] != sock_recv && wrk[n] != i )
+                                        write(wrk[n], str, BUF_SIZE);
+                                }
+                            }
+                        }
+
+                        else{
+send_to_groups:
+                            // reseting variables
+                            memset(str, 0, BUF_SIZE);
+                            in_fun_gp = 0;
+                            in_wrk_gp = 0;
+
+                            // checking if user is in fun group
+                            for (n = 0; n <= fun_count; n++){
+                                if(fun[n] == i){
+                                    in_fun_gp = 1;
+                                    break;
+                                }
                             }
 
-                            
-                        } 
+                            // checking if user is in wrk group
+                            for (n = 0; n <= wrk_count; n++){
+                                if(wrk[n] == i){
+                                    in_wrk_gp = 1;
+                                    break;
+                                }
+                            }  
 
+                            // sending msg to fun group
+                            if (in_fun_gp == 1){
+                                for (n = 0; n<= fun_count; n++){
+                                    if (FD_ISSET(fun[n], &active_fd_set)) {
+                                        // except the listener and ourselves
+                                        if (fun[n] != sock_recv && fun[n] != i ){
+                                            strcat(str, "<");
+                                            strcat(str, users[i]);
+                                            strcat(str, "> ");
+                                            strcat(str, buf);
+                                            write(fun[n], str, BUF_SIZE);
+                                        }
+                                    }
+                                }
+                            } 
+                            // sending msg to work group
+                            else if (in_wrk_gp == 1){
+                                for (n = 0; n<= wrk_count; n++){
+                                    if (FD_ISSET(wrk[n], &active_fd_set)) {
+                                        // except the listener and ourselves
+                                        if (wrk[n] != sock_recv && wrk[n] != i ){
+                                            strcat(str, "<");
+                                            strcat(str, users[i]);
+                                            strcat(str, "> ");
+                                            strcat(str, buf);
+                                            write(wrk[n], str, BUF_SIZE);
+                                        }
+                                    }
+                                }
+                            }  
+
+                        }// end else                      
                     }// end else --- checking user responses
-                }
+                }// end of for 
             }
         }
     }

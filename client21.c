@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
                         send(sock, buf, BUF_SIZE, 0);
                     }else {
                         printf("%s\n" , buf);
-                        printf(">>> ");
+                        // printf(">>> ");
                         fflush(stdout);
                     }
                 }  

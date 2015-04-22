@@ -1,9 +1,10 @@
 # Multi-chat-server-c
 
-chat between peers or join "Fun" or "work" groups
+chat between peers or join "Fun" or "work" groups \n\n
 
-\c - Chat with user
-\l - List online users
-\f - Fun Group
-\w - Work Group
-\q - Quit
+\c - Chat with user \n
+\l - List online users \n
+\f - Fun Group \n
+\w - Work Group \n
+\x - Exit Group \n
+\q - Quit \n
