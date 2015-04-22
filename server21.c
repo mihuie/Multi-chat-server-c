@@ -1,3 +1,5 @@
+// 03025377 Michael Huie
+
 #include <stdio.h>
 #include <sys/types.h>	/* system type defintions */
 #include <sys/socket.h>	/* network system functions */
@@ -10,8 +12,6 @@
 #define LISTEN_PORT	60000
 #define MAX_USERS 100
 #define USER_INFO 1024
-
-
 
 
 int main(int argc, char *argv[]){
@@ -34,13 +34,11 @@ int main(int argc, char *argv[]){
     char str[BUF_SIZE], temp[10];
     char users[MAX_USERS][USER_INFO] = {{""}};
     char who_str[] = "r@";
-    char menu[] = "\n\tMENU\n\\c - Chat with user\n\\l - List online users\n\\f - Fun Group\n\\w - Work Group\n\\x - Exit Group\n\\q - Quit\n";
+    char port[8];
     
-
-
-
     FD_ZERO(&readfds);
     FD_ZERO(&active_fd_set);/* zero out socket set */
+
 
     /* create socket for receiving */
     sock_recv=socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -68,6 +66,9 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
+    system("clear");
+    printf("Listening on port 60000...... \n");
+
     FD_SET(sock_recv, &active_fd_set);	/* add socket to listen to */
     
     no_clients = sock_recv;
@@ -80,8 +81,10 @@ int main(int argc, char *argv[]){
 
         for (i = 0; i<= no_clients; i++){
             if (FD_ISSET(i, &readfds)){
-new_user:
-                if (i == sock_recv){
+        //############################## 
+        //      NEW USER
+        //##############################         
+                if (i == sock_recv){ 
                     incoming_len = sizeof(remote_addr);   /* who sent to us? */
                     if (!((newfd = accept(sock_recv, (struct sockaddr *)&remote_addr, &incoming_len)) == -1)){
                         FD_SET(newfd, &active_fd_set);
@@ -108,47 +111,58 @@ new_user:
                         strcpy(str, "\nYou are now online as ");
                         strcat(str, users[newfd]);
                         write(newfd, str, BUF_SIZE);
-                        write(newfd, menu, BUF_SIZE);
                     }
 
-                } else {
-exsiting_user:
+                } 
+        //############################## 
+        //      EXISTING USERS
+        //##############################        
+                else {
                     recv_msg_size=recv(i, buf, sizeof(buf), 0);
                     buf[recv_msg_size] = '\0';
 
                     // if user disconnects
                     if (recv_msg_size <= 0){ 
-                        if (recv_msg_size == 0)
-                            printf("%s went offline", users[i]);
-                        else 
-                            perror("recv");
-                        
-                        close(i); // bye!
+                        printf("%s went offline\n", users[i]);                    
+                        close(i); 
                         FD_CLR(i, &active_fd_set);
+                    } 
+        //############################## 
+        //      CHAT REQUEST
+        //##############################               
+                    else {
+                        printf("%s", buf);
 
-                    } else {
-
-request_chat:           // checking if  
                         if(strncmp("@", buf, 1) == 0){
                             
                             memset(str, 0, BUF_SIZE);
+                            user_present = 0;
+
                             for (n = 1; n <= recv_msg_size; n++)
                                 str[n-1] = buf[n];
                             
                             for (n = 0; n<= no_clients; n++){                                
                                 if (strcmp(users[n], str) == 0){
-                                    strcat(str, " would like to chat with you \n(Yes - \\y or No - \\n):");
+                                    user_present++;
+                                    strcpy(str, "@");
+                                    strcat(str, users[i]);
+                                    getpeername(sock_recv , (struct sockaddr*)&remote_addr , (socklen_t*)&incoming_len);
+                                    strcat(str, ",");
+                                    strcat(str, inet_ntoa(remote_addr.sin_addr));
+                                    strcat(str, ",");
+                                    sprintf(port, "%d", ntohs(remote_addr.sin_port));
+                                    strcat(str, port); 
+                                    write(n, str, BUF_SIZE);                              
                                     break;
                                 }
                             }
-                            write(n, str, BUF_SIZE);
-                            recv(n, buf, sizeof(buf), 0);
-                            write(n, buf, BUF_SIZE);                                                   
-
+                            if (user_present == 0)
+                                write(i, "\nInvalid username!\n", BUF_SIZE);                     
                         }
-                        // list
-                        else if(strcmp("\\l\n", buf) == 0){
-userlist: 
+        //############################## 
+        //      USER LIST
+        //############################## 
+                        if(strcmp("\\l\n", buf) == 0){
                             // creating a list of peers to return to
                             memset(str, 0, BUF_SIZE);
                             strcat(str, "\n\tAvailable users:\n");
@@ -166,9 +180,10 @@ userlist:
                             strcat(str, " ***me\n");
                             write(i, str, BUF_SIZE);
                         } 
-                        // join fun group
-                        else if(strcmp("\\f\n", buf) == 0){
-fun_group: 
+        //############################## 
+        //      FUN GROUP
+        //##############################                 
+                        if(strcmp("\\f\n", buf) == 0){
                             memset(str, 0, BUF_SIZE);
                             write(i, "\n================================\nWelcome to the Fun Group\n================================\n", BUF_SIZE);
 
@@ -186,9 +201,10 @@ fun_group:
                                 }
                             }
                         }
-                        // join work group
-                        else if(strcmp("\\w\n", buf) == 0){
-wrk_group: 
+        //############################## 
+        //      WORK GROUP
+        //##############################      
+                        if(strcmp("\\w\n", buf) == 0){
                             memset(str, 0, BUF_SIZE);
                             write(i, "\n================================\nWelcome to the Work Group\n================================\n", BUF_SIZE);
 
@@ -206,9 +222,10 @@ wrk_group:
                                 }
                             }
                         } 
-                        //                       
+        //############################## 
+        //      SEND MSG TO GROUPS
+        //##############################           
                         else{
-send_to_groups:
                             // reseting variables
                             memset(str, 0, BUF_SIZE);
                             in_fun_gp = 0;
@@ -260,13 +277,12 @@ send_to_groups:
                                     }
                                 }
                             }  
-
-                        }// end else                      
-                    }// end else --- checking user responses
-                }// end of for 
+                        }                    
+                    }
+                }
             }
-        }
-    }
-}
+        }// end of for loop goes through connects
+    }// end while to listen and send
+}// end of main
 
 

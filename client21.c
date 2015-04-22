@@ -1,3 +1,5 @@
+// 03025377 Michael Huie
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -14,15 +16,19 @@
 
 int main(int argc, char *argv[])
 {
-    int sock;
-    struct sockaddr_in  addr_server;
+    int sock, sock_toPeer;
+    struct sockaddr_in  addr_server, addr_client;
     int addr_size, no_clients, i;
     fd_set master;
     fd_set read_fds;
 
-    char peer_ip[10], peer_id[10];
     char buf[BUF_SIZE], str[20];
     int byte_recvd;
+    char menu[] = "\n\t\tMENU\n\t\\c - Chat with user\n\t\\l - List online users\n\t\\f - Fun Group\n\t\\w - Work Group\n\t\\x - Exit Group\n\t\\q - Quit\n";
+    char user[30];
+    char ip[30];
+    char port[10];
+
 
     // create socket for sending data 
     sock=socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -48,8 +54,9 @@ int main(int argc, char *argv[])
     FD_SET(sock, &master);
     
     no_clients = sock;
-
-    printf("\n");
+    
+    system("clear");
+    printf("\n\tPlease enter '\\h' for MENU\n\n");
     
     while(1){
         read_fds = master;
@@ -63,14 +70,16 @@ int main(int argc, char *argv[])
                 // in from keyboard being sent to server
                 if (i == 0){
                     fgets(buf, BUF_SIZE, stdin);
+
                     if (strcmp(buf, "\\q\n") == 0){
                         printf("\nbye!");
-                        // write(sock, buf, BUF_SIZE);
                         close(sock);
+
                     } else if (strcmp(buf, "\\c\n") == 0){  
                         memset(buf, '\0', BUF_SIZE);
                         memset(str, '\0', BUF_SIZE);  
                         
+                        system("clear");
                         printf("Who do you want to chat with? :");
                         scanf("%s", buf);
                         
@@ -78,8 +87,10 @@ int main(int argc, char *argv[])
                         strcat(str, buf);
 
                         send(sock, str, BUF_SIZE, 0); 
-                    }
-                    else                        
+                    } else if(strcmp(buf, "\\h\n") == 0){
+                        system("clear");
+                        printf("%s\n", menu);
+                    } else                        
                         write(sock, buf, BUF_SIZE);
                 } 
                 // from server 
@@ -89,22 +100,91 @@ int main(int argc, char *argv[])
 
                     if (byte_recvd <= 0){ 
                         if (byte_recvd == 0)
-                            printf("Server offline");
+                            printf("Server offline\n");
                         else 
                             perror("recv");
                         
                         close(i); // bye!
                         FD_CLR(i, &read_fds);
-                    } else if (strcmp(buf, "r@") == 0){    
+
+                    } else if (strcmp(buf, "r@") == 0){ 
+
                         printf("server>  Enter a username? :");
                         memset(buf, BUF_SIZE, 0);
                         scanf("%s", buf);
                         send(sock, buf, BUF_SIZE, 0);
-                    } else if (strncmp("@", buf, 1) == 0){
-                        printf("%s\n", buf);
+
+                    } 
+                    // peer to peer chat
+                    else if (strncmp("@", buf, 1) == 0){
+
+                        memset(user,'\0',30);
+                        memset(ip,'\0',30);
+                        memset(port,'\0', 10);
+
+                        int i=1;
+
+                        while(buf[i] != ',')
+                        {
+                            user[i-1] = buf[i];
+                            i++;
+                        }
+                        i++;
+
+                        int j=0;
+                        while(buf[i] != ',')
+                        {
+                            ip[j] = buf[i];
+                            i++;
+                            j++;
+                        }
+                        i++;
+
+                        int h=0;
+                        while(buf[i] != '\0')
+                        {
+                            port[h] = buf[i];
+                            i++;
+                            h++;
+                        }
+
+                        // printf("%s %s %s \n", user, ip, port);
+                        printf("\nIncoming connect request from %s. \nWould like to connect? (y/n): ", user);
+                        char option[5];
+                        memset(option,'\0', 5);
+                        // fgets(option, BUF_SIZE, stdin);
+                        scanf(" %s", option);
+
+                        /// set up connect request to client here
+                        if (strcmp(option, "y") == 0){
+                            printf("\nSetting up connection\n");
+                            /*
+
+                            if(socket(AF_INET , SOCK_STREAM , 0) < 0)
+                            {
+                                perror("socket");
+                            }
+
+                            addr_client.sin_addr.s_addr = (long int)atoi(ip);
+                            addr_client.sin_family = AF_INET;
+                            addr_client.sin_port = htons( atoi(port) );
+
+                            sock_toPeer = connect(sock_toPeer,(struct sockaddr *) &addr_client, sizeof(addr_client));
+                            if(sock_toPeer<0)
+                            {
+                                perror("Connect");
+                                return 1;
+                            }
+                            /// incomplete
+                            */
+                        }
+                        
+
+
+
                     } else {
                         printf("%s\n" , buf);
-                        fflush(stdout);
+                        // fflush(stdout);
                     }
                 }  
                 fflush(stdout);
