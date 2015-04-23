@@ -16,18 +16,20 @@
 
 int main(int argc, char *argv[])
 {
-    int sock, sock_toPeer;
-    struct sockaddr_in  addr_server, addr_client;
+    int sock, sock_toPeer, sock_in, sock_PeerIn;
+    struct sockaddr_in  addr_server, my_addr, peer_addr;
     int addr_size, no_clients, i;
     fd_set master;
     fd_set read_fds;
 
     char buf[BUF_SIZE], str[20];
     int byte_recvd;
-    char menu[] = "\n\t\tMENU\n\t\\c - Chat with user\n\t\\l - List online users\n\t\\f - Fun Group\n\t\\w - Work Group\n\t\\x - Exit Group\n\t\\q - Quit\n";
+    char menu[] = "\n\t\tMENU\n\t\\h - Help\n\t\\c - Chat with user\n\t\\l - List online users\n\t\\f - Fun Group\n\t\\w - Work Group\n\t\\x - Exit Group\n\t\\q - Quit\n";
     char user[30];
     char ip[30];
     char port[10];
+    int group = 0;
+    int myPort = (rand() % 1000 ) + 60001;
 
 
     // create socket for sending data 
@@ -48,13 +50,14 @@ int main(int argc, char *argv[])
         exit(1);
     } 
 
+
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
     FD_SET(0, &master);
     FD_SET(sock, &master);
     
     no_clients = sock;
-    
+
     system("clear");
     printf("\n\tPlease enter '\\h' for MENU\n\n");
     
@@ -85,11 +88,24 @@ int main(int argc, char *argv[])
                         
                         strcat(str, "@");
                         strcat(str, buf);
+                        write(sock, str, BUF_SIZE); 
 
-                        send(sock, str, BUF_SIZE, 0); 
                     } else if(strcmp(buf, "\\h\n") == 0){
                         system("clear");
                         printf("%s\n", menu);
+
+                    } else if(strcmp(buf, "\\w\n") == 0){
+                        system("clear");                        
+                        write(sock, buf, BUF_SIZE);
+                    } else if(strcmp(buf, "\\f\n") == 0){
+                        system("clear");                        
+                        write(sock, buf, BUF_SIZE);
+                    } else if(strcmp(buf, "\\x\n") == 0){
+                        printf("Bye.... \n");
+                        sleep(1);
+                        system("clear");                        
+                        printf("\n\tPlease enter '\\h' for MENU\n\n");
+                        write(sock, buf, BUF_SIZE);
                     } else                        
                         write(sock, buf, BUF_SIZE);
                 } 
@@ -107,12 +123,12 @@ int main(int argc, char *argv[])
                         close(i); // bye!
                         FD_CLR(i, &read_fds);
 
-                    } else if (strcmp(buf, "r@") == 0){ 
+                    }else if (strcmp(buf, "r@") == 0){ 
 
                         printf("server>  Enter a username? :");
                         memset(buf, BUF_SIZE, 0);
                         scanf("%s", buf);
-                        send(sock, buf, BUF_SIZE, 0);
+                        write(sock, buf, BUF_SIZE);
 
                     } 
                     // peer to peer chat
@@ -150,13 +166,13 @@ int main(int argc, char *argv[])
 
                         // printf("%s %s %s \n", user, ip, port);
                         printf("\nIncoming connect request from %s. \nWould like to connect? (y/n): ", user);
-                        char option[5];
-                        memset(option,'\0', 5);
-                        // fgets(option, BUF_SIZE, stdin);
-                        scanf(" %s", option);
+                        char choice[5];
+                        memset(choice,'\0', 5);
+                        // fgets(choice, BUF_SIZE, stdin);
+                        scanf(" %s", choice);
 
                         /// set up connect request to client here
-                        if (strcmp(option, "y") == 0){
+                        if (strcmp(choice, "y") == 0){
                             printf("\nSetting up connection\n");
                             /*
 
@@ -178,20 +194,14 @@ int main(int argc, char *argv[])
                             /// incomplete
                             */
                         }
-                        
-
-
-
                     } else {
                         printf("%s\n" , buf);
-                        // fflush(stdout);
+                        fflush(stdout);
                     }
                 }  
                 fflush(stdout);
             }
     }
-
-    close(sock);
-    
+    close(sock);    
 }
 
