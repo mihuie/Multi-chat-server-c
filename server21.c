@@ -123,6 +123,8 @@ int main(int argc, char *argv[]){
                     recv_msg_size=recv(i, buf, sizeof(buf), 0);
                     buf[recv_msg_size] = '\0';
 
+                    // printf("%s\n", buf);
+
                     // if user disconnects
                     if (recv_msg_size <= 0){ 
                         printf("%s went offline\n", users[i]);                    
@@ -192,7 +194,7 @@ int main(int argc, char *argv[]){
                             else{
                                 memset(str, 0, BUF_SIZE);
                                 write(i, "\n\t=====================================\n\tWelcome to the Work Group - Exit(\\x)\n\t=====================================\n", BUF_SIZE);
-                                
+
                                 wrk[wrk_count] = i;
                                 wrk_count = wrk_count + 1;
                                 user_avl[i] = 1;
@@ -212,10 +214,8 @@ int main(int argc, char *argv[]){
         //############################## 
         // EXIT ACTIVITY => GO AVAILABLE
         //##############################      
-                        else if (strcmp("\\x\n", buf) == 0){
+                        else if (strcmp("\\x\n", buf) == 0){                            
                             
-                            // write(i, clear, strlen(clear));
-                            // sleep(2);
                             write(i, "\nYou and now available\n", BUF_SIZE);
                             user_avl[i] = 0;
 
@@ -261,31 +261,48 @@ int main(int argc, char *argv[]){
         //############################## 
         //      CHAT REQUEST
         //############################## 
-                        else if(strcmp("@", buf) == 0){
+                        else if(strncmp("@", buf,1) == 0){
                             
                             memset(str, 0, BUF_SIZE);
                             user_present = 0;
-
-                            for (n = 1; n <= recv_msg_size; n++)
-                                str[n-1] = buf[n];
                             
+                            int c = 1;
+                            while(buf[c] != ',')
+                            {
+                                str[c-1] = buf[c];
+                                c++;
+                            }
+                            c++;
+
+                            int d=0;
+                            while(buf[c] != '\0')
+                            {
+                                port[d] = buf[c];
+                                c++;
+                                d++;
+                            }
+                                                        
                             for (n = 0; n<= no_clients; n++){                                
-                                if (strcmp(users[n], str) == 0)
+                                if (strcmp(users[n], str) == 0){
                                     user_present++;
+                                    break;
+                                }
+
                             }
 
                             if (user_present == 0)
                                 write(i, "\nInvalid username!\n", BUF_SIZE); 
                             else if (user_present == 1){
                                 strcpy(str, "@");
-                                strcat(str, users[i]);
+                                strcat(str, users[i]);              
                                 getpeername(sock_recv , (struct sockaddr*)&remote_addr , (socklen_t*)&incoming_len);
                                 strcat(str, ",");
-                                strcat(str, inet_ntoa(remote_addr.sin_addr));
+                                strcat(str, port);
                                 strcat(str, ",");
-                                sprintf(port, "%d", ntohs(remote_addr.sin_port));
-                                strcat(str, port); 
+                                strcat(str, inet_ntoa(remote_addr.sin_addr));  
+                                // printf("%s\n", str);                              
                                 write(n, str, BUF_SIZE);
+                                // recv(n, buf, BUF_SIZE,0);
                             }                    
                         }                   
         //############################## 

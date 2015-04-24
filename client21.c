@@ -16,20 +16,22 @@
 
 int main(int argc, char *argv[])
 {
-    int sock, sock_toPeer, sock_in, sock_PeerIn;
-    struct sockaddr_in  addr_server, my_addr, peer_addr;
+    int sock, sock_toPeer, sock_in, sock_PeerIn, sock_listen, sock_recv;
+    struct sockaddr_in  addr_server, my_addr, peer_addr, recv_addr;
     int addr_size, no_clients, i;
     fd_set master;
     fd_set read_fds;
 
-    char buf[BUF_SIZE], str[20];
-    int byte_recvd;
+    char buf[BUF_SIZE], my_buf[BUF_SIZE], str[20];
+    int byte_recvd, bytes_received;
     char menu[] = "\n\t\tMENU\n\t\\h - Help\n\t\\c - Chat with user\n\t\\l - List online users\n\t\\f - Fun Group\n\t\\w - Work Group\n\t\\x - Exit Group\n\t\\q - Quit\n";
     char user[30];
     char ip[30];
     char port[10];
     int group = 0;
     int myPort = (rand() % 1000 ) + 60001;
+    char recv_buf[BUF_SIZE];
+    char hostname[128];
 
 
     // create socket for sending data 
@@ -88,7 +90,69 @@ int main(int argc, char *argv[])
                         
                         strcat(str, "@");
                         strcat(str, buf);
+                        strcat(str, ",");
+                        sprintf(port, "%d", myPort);
+                        strcat(str, port);
                         write(sock, str, BUF_SIZE); 
+
+                        printf("listening on port %s........\n", port);
+
+
+                        // listening for connections
+                        sock_listen = socket(PF_INET, SOCK_STREAM, 0);
+                        if (sock_listen < 0){
+                            printf("socket() failed\n");
+                            exit(0);
+                        }
+                         
+                        memset(&my_addr, 0, sizeof (my_addr));  
+                        my_addr.sin_family = AF_INET;   
+                        my_addr.sin_addr.s_addr = htonl(INADDR_ANY);  
+                        my_addr.sin_port = htons((unsigned short)myPort);
+                            
+                        i=bind(sock_listen, (struct sockaddr *) &my_addr, sizeof (my_addr));
+                        if (i < 0){
+                            printf("bind() failed\n");
+                            exit(0);
+                        }
+                           
+                        i=listen(sock_listen, 5);
+                        if (i < 0){
+                            printf("listen() failed\n");
+                            exit(0);
+                        }
+
+                        printf("\nConnected\n\n");
+                        int count;
+                        while (1){
+                            /* if connection is established, communicate */
+                            bzero(my_buf, BUF_SIZE);
+                            count = read( sock_recv, my_buf, BUF_SIZE);
+                            if(count < 0)
+                            {
+                              perror("Error reading from socket\n");
+                              exit(1);
+                            }
+                            printf("remote user > %s\n", my_buf);
+
+                            /* Decode HTTP header */
+
+                            /* write a response to the client */
+                            printf("me >");
+                            bzero(my_buf, BUF_SIZE);
+                            fgets(my_buf, BUF_SIZE, stdin);
+                            count = write(sock_recv, my_buf, strlen(my_buf));
+                            if(count < 0)
+                            {
+                              perror("Error writing to socket\n");
+                              exit(1);
+                            }
+
+                        }
+
+                        close(sock_recv);
+                        close(sock_listen);
+
 
                     } else if(strcmp(buf, "\\h\n") == 0){
                         system("clear");
@@ -128,6 +192,7 @@ int main(int argc, char *argv[])
                         printf("server>  Enter a username? :");
                         memset(buf, BUF_SIZE, 0);
                         scanf("%s", buf);
+                        // fgets(buf, BUF_SIZE, stdin);
                         write(sock, buf, BUF_SIZE);
 
                     } 
@@ -150,7 +215,7 @@ int main(int argc, char *argv[])
                         int j=0;
                         while(buf[i] != ',')
                         {
-                            ip[j] = buf[i];
+                            port[j] = buf[i];
                             i++;
                             j++;
                         }
@@ -159,7 +224,7 @@ int main(int argc, char *argv[])
                         int h=0;
                         while(buf[i] != '\0')
                         {
-                            port[h] = buf[i];
+                            ip[h] = buf[i];
                             i++;
                             h++;
                         }
@@ -173,28 +238,44 @@ int main(int argc, char *argv[])
 
                         /// set up connect request to client here
                         if (strcmp(choice, "y") == 0){
-                            printf("\nSetting up connection\n");
-                            /*
-
-                            if(socket(AF_INET , SOCK_STREAM , 0) < 0)
+                            printf("\nSetting up connection\n\n");
+                            
+                            if((sock_toPeer = socket(AF_INET, SOCK_STREAM, 0)) == -1)
                             {
                                 perror("socket");
                             }
 
-                            addr_client.sin_addr.s_addr = (long int)atoi(ip);
-                            addr_client.sin_family = AF_INET;
-                            addr_client.sin_port = htons( atoi(port) );
+                            peer_addr.sin_family = AF_INET;
+                            peer_addr.sin_addr.s_addr = inet_addr(ip);
+                            peer_addr.sin_port = htons( atoi(port) );
 
-                            sock_toPeer = connect(sock_toPeer,(struct sockaddr *) &addr_client, sizeof(addr_client));
+                            sock_toPeer = connect(sock_toPeer,(struct sockaddr *) &peer_addr, sizeof(peer_addr));
                             if(sock_toPeer<0)
                             {
                                 perror("Connect");
-                                return 1;
+                                break;
                             }
-                            /// incomplete
-                            */
+                            printf("\n Go ahead, start chatting with %s\n", user);
+
+                            while (1){
+
+                                memset(recv_buf,'\0', BUF_SIZE);
+                                memset(my_buf,'\0', BUF_SIZE);
+
+                                if(recv(sock_toPeer, recv_buf, BUF_SIZE, 0) > 0)
+                                    printf("\t\t<%s>: %s\n", user, recv_buf);
+                                else if (fgets(my_buf, BUF_SIZE, stdin) != NULL){
+                                    write(sock_toPeer, my_buf, BUF_SIZE);
+                                    memset(my_buf,'\0', BUF_SIZE);
+                                    fflush(stdout);
+                                }
+                                
+                                
+                            }
+                            close(sock_toPeer);   
                         }
-                    } else {
+                    } 
+                    else {
                         printf("%s\n" , buf);
                         fflush(stdout);
                     }
